@@ -106,6 +106,19 @@ The generated payload is `build/BTA-Audio.bin`. On the source snapshot used for 
 | `Makefile` | Payload compilation, tests and reproducibility check |
 | `LICENSE` | MIT copyright and license notice |
 
+## Donations
+
+If you find PS4 Bluetooth Audio useful and want to support continued development, donations are optional and appreciated.
+
+| Cryptocurrency | Network | Receiving address |
+| --- | --- | --- |
+| **Bitcoin (BTC)** | Bitcoin (BTC) | `16hghGSssvfd18ggW4ZvpKuzxgpaQY2w3u` |
+| **USDT** | TRON (TRC20) | `TLq7Vfuos49WEUSBiKeYEKwhBBdmrJRpqZ` |
+| **Ethereum (ETH)** | Ethereum mainnet | `0x6fdd52a2b6105af212e77e5ed5b5dd8733e02a0b` |
+| **Litecoin (LTC)** | Litecoin | `LYpn7yZyhBLTfpS8YAje5dwCun2xpU63nE` |
+
+**Check the network and address carefully before sending.** In particular, send USDT **only over TRON (TRC20)** to the listed USDT address; transferring on an incompatible network can cause permanent loss. Some exchanges may impose minimum deposit amounts.
+
 ## License and credits
 
 MIT licensed. Portions of the code originate from [PS4 Bluetooth Audio](https://github.com/XB-01/ps4-bt-audio); the original copyright notice and terms are retained in [`LICENSE`](LICENSE).
