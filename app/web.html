@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#000000">
+<title>Bluetooth Audio</title>
+<style>
+/* Phone control page for the PS4 Bluetooth Audio service, in the PlayStation
+   design system. One column, no external resources (the service CSP allows only
+   inline styles/scripts), so the SST display face is stood in for by the system
+   sans the design system itself names as its fallback.
+
+   Translation notes: PlayStation Blue (#0070cc) is the brand anchor and primary
+   fill; Cyan (#1eaedb) is reserved strictly for the hover/focus/active "power-on"
+   state (cyan fill + white border + blue ring + a lift). The channel runs a
+   near-black masthead over content cards, anchored by a blue footer rule. There
+   is no green or amber: connected/working reads blue, problems read red. The
+   1.2x button lift is scaled down to ~1.02x for a full-width phone button so it
+   never forces horizontal scroll. */
+:root{
+ --blue:#0070cc;--cyan:#1eaedb;--link:#53b1ff;
+ --bg:#000000;--masthead:#000000;--card:#12151d;--card2:#1a1f2a;--line:#262d3a;
+ --ink:#ffffff;--muted:#9aa6b7;--accent:#0070cc;--accent-ink:#ffffff;
+ --good:#7fc0ff;--good-bg:rgba(0,112,204,.22);--warn:#a9c7ef;--warn-bg:rgba(90,130,190,.18);
+ --bad:#ff8b96;--bad-bg:rgba(200,27,58,.24);--footer:#0070cc;--focus:#1eaedb;
+ --masthead-ink:#ffffff;--masthead-sub:#9fb4cf;
+}
+@media (prefers-color-scheme:light){:root{
+ --bg:#eef2f8;--masthead:#000000;--card:#ffffff;--card2:#f5f7fa;--line:#e2e8f1;
+ --ink:#1f1f1f;--muted:#5b6678;--accent:#0070cc;--accent-ink:#ffffff;
+ --good:#0068bd;--good-bg:#e0eefb;--warn:#355f93;--warn-bg:#e7eef8;
+ --bad:#c81b3a;--bad-bg:#fbe0e4;--footer:#0070cc;--focus:#0070cc;
+ --masthead-ink:#ffffff;--masthead-sub:#9fb4cf;
+}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+ font:17px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,Arial,sans-serif;
+ padding:env(safe-area-inset-top) max(16px,env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+ -webkit-font-smoothing:antialiased}
+main{max-width:560px;margin:0 auto}
+/* Near-black masthead — the PlayStation nav surface that never inverts. */
+header{background:var(--masthead);border-radius:16px;padding:20px 22px 18px;margin:12px 0 4px}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--masthead-sub);font-weight:600}
+h1{font-size:28px;font-weight:300;margin:4px 0 0;letter-spacing:-.01em;color:var(--masthead-ink)}
+h2{font-size:15px;margin:0;letter-spacing:.02em;font-weight:600}
+p{margin:8px 0;color:var(--muted);font-size:15px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin:14px 0;
+ box-shadow:0 5px 9px rgba(0,0,0,.06)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.pill{border-radius:999px;background:var(--card2);color:var(--muted);padding:6px 13px;font-size:13px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:7px}
+.pill::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
+.pill.live{background:var(--good-bg);color:var(--good)}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.bad{background:var(--bad-bg);color:var(--bad)}
+.now strong{font-size:22px;font-weight:300;letter-spacing:-.01em}
+.meter{height:8px;background:var(--card2);border-radius:6px;margin:16px 0 8px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--accent);border-radius:6px;transition:width .25s}
+.sub{font-size:14px;color:var(--muted);margin:0}
+label{font-size:14px;color:var(--muted);font-weight:600}
+/* Full-pill buttons with the PlayStation hover/focus/active "power-on" signature. */
+button{font:inherit;font-weight:600;border:2px solid var(--line);border-radius:999px;
+ padding:13px 22px;min-height:52px;background:var(--card2);color:var(--ink);cursor:pointer;
+ width:100%;margin-top:12px;-webkit-tap-highlight-color:transparent;
+ transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700;letter-spacing:.4px}
+button:hover,button:focus-visible{background:var(--cyan);color:#fff;border-color:#fff;
+ box-shadow:0 0 0 2px var(--blue);transform:scale(1.02)}
+button:active{opacity:.6;transform:scale(1)}
+button.ghost{background:transparent;border-color:transparent;min-height:46px;padding:10px 16px}
+button.inline{width:auto;margin:0;min-height:44px;padding:10px 18px;flex:none}
+button.inline:hover,button.inline:focus-visible,.seg button:hover,.seg button:focus-visible{transform:scale(1.05)}
+button:disabled{opacity:.4;cursor:default;transform:none;box-shadow:none;background:var(--card2);color:var(--ink);border-color:var(--line)}
+button.primary:disabled{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+/* Keyboard focus: a blue ring by default; buttons/inputs replace it with the
+   fuller signature below so every focusable element stays clearly visible. */
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+button:focus-visible{outline:none}
+.seg{display:flex;gap:8px;margin-top:10px}
+.seg button{flex:1;margin-top:0;min-width:0;padding:12px 6px;font-size:15px}
+select,input{font:inherit;width:100%;padding:13px 14px;min-height:52px;margin-top:10px;
+ background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:12px;
+ transition:border-color .18s ease,box-shadow .18s ease}
+select:focus-visible,input:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+input[type=range]{min-height:44px;padding:0;accent-color:var(--accent)}
+.vol{display:flex;align-items:center;gap:14px;margin-top:8px}
+.vol input{margin:0}
+.tune-knob{margin:18px 0 20px}
+.tune-knob input[type=range]{margin:4px 0 0}
+.tune-knob output{min-width:70px}
+#tune-live{margin-top:12px;font-variant-numeric:tabular-nums}
+output{font-variant-numeric:tabular-nums;font-weight:700;font-size:18px;min-width:52px;text-align:right}
+#notice{color:var(--warn);font-size:15px;min-height:0;margin:10px 2px 0}
+#notice:empty{display:none}
+.hidden{display:none!important}
+dl{display:grid;grid-template-columns:1fr auto;gap:6px 14px;margin:12px 0 0;font-size:14px}
+dt{color:var(--muted)}
+dd{margin:0;font-variant-numeric:tabular-nums;text-align:right}
+details>summary{cursor:pointer;color:var(--muted);font-size:14px;font-weight:600;padding:6px 0;list-style:none}
+/* Settings fold: a collapsed card by default, so the primary journey leads and
+   the occasional controls (TV, stereo, latency) get their own room when wanted. */
+.fold>summary{color:var(--ink);font-size:16px;font-weight:600;letter-spacing:.01em;padding:2px 0}
+.fold[open]>summary{margin-bottom:4px}
+details>summary::-webkit-details-marker{display:none}
+details>summary::after{content:" ›";transform:rotate(90deg);display:inline-block;margin-left:4px}
+details[open]>summary::after{transform:rotate(-90deg)}
+footer{color:var(--muted);font-size:13px;line-height:1.7;margin:24px 2px 2px;padding-top:18px;
+ border-top:2px solid var(--footer);text-align:center}
+@media (prefers-reduced-motion:reduce){.meter i{transition:none}button{transition:none}}
+</style>
+</head>
+<body>
+<main>
+<header>
+ <div class="eyebrow">PlayStation 4 · Phone control</div>
+ <h1>Bluetooth Audio</h1>
+</header>
+
+<div id="notice" role="status" aria-live="polite"></div>
+
+<section class="card hidden" id="pairing">
+ <div class="row"><h2>Pair this phone</h2><span class="pill warn">Code needed</span></div>
+ <p id="pair-hint">Enter the six-digit code shown on your TV.</p>
+ <label for="pair-code">Pairing code</label>
+ <input id="pair-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+  pattern="[0-9]*" placeholder="000000" aria-describedby="pair-hint"
+  style="letter-spacing:8px;text-align:center;font-size:24px">
+ <button class="primary" id="pair-btn">Pair</button>
+</section>
+
+<div id="controls">
+
+ <section class="card now">
+  <div class="row"><strong id="device">Headphones</strong><span class="pill" id="state">Connecting…</span></div>
+  <div class="meter" aria-hidden="true"><i id="level"></i></div>
+  <p class="sub" id="signal">Reading status…</p>
+  <div class="vol">
+   <label for="volume" style="flex:none">Volume</label>
+   <input id="volume" type="range" min="0" max="200" step="5" value="40" aria-describedby="vol-note">
+   <output id="vol-out" for="volume">40%</output>
+  </div>
+  <p class="sub" id="vol-note">0–100% = normal volume. Above 100% = extra digital boost with peak limiting (up to 200%). Start low to protect your hearing; loud content may be limited. TV volume is unchanged.</p>
+  <button class="primary" id="primary" data-act="connect" disabled>Connect</button>
+  <button data-act="test" id="test-btn" title="Play a short test tone">Test sound</button>
+ </section>
+
+ <section class="card" id="fix">
+  <h2>Fix a problem</h2>
+  <p class="sub" id="fix-text">Everything looks fine.</p>
+  <button class="ghost hidden" id="fix-btn"></button>
+ </section>
+
+ <section class="card" id="recovery">
+  <h2>Audio recovery · experimental</h2>
+  <p class="sub">If connected headphones are silent, try <strong>Retry audio stream</strong> first. It does not disconnect Bluetooth. If still silent, use <strong>Rebuild Bluetooth link</strong>, which disconnects and reconnects the selected headset. Neither can detect whether you actually hear sound.</p>
+  <button id="recover-audio">Retry audio stream</button>
+  <button id="recover-link" class="ghost">Rebuild Bluetooth link</button>
+  <p class="sub" id="recover-status" role="status">Available when a headset is streaming. Recovery has a 20-second cooldown.</p>
+ </section>
+
+ <section class="card" id="tuner">
+  <div class="row"><h2>Audio lab · live tuning</h2><span class="pill">V10</span></div>
+  <p class="sub">Adjust these while listening. Release each slider to apply it without reconnecting. Changes last until this payload restarts.</p>
+  <div class="tune-knob">
+   <div class="row"><label for="tune-poll">Sender wake interval</label><output id="tune-poll-out" for="tune-poll">500 µs</output></div>
+   <input type="range" id="tune-poll" min="250" max="1000" step="250" value="500">
+   <p class="sub">Affects both game audio and Test Sound. Lower values check deadlines more often, but use more CPU.</p>
+  </div>
+  <div class="tune-knob">
+   <div class="row"><label for="tune-cushion">Audio buffer</label><output id="tune-cushion-out" for="tune-cushion">16 ms</output></div>
+   <input type="range" id="tune-cushion" min="8" max="32" step="4" value="16">
+   <p class="sub">Game capture only. A larger cushion may resist jitter but adds delay; Test Sound bypasses this buffer.</p>
+  </div>
+  <div class="tune-knob">
+   <div class="row"><label for="tune-margin">Drop tolerance</label><output id="tune-margin-out" for="tune-margin">0 ms</output></div>
+   <input type="range" id="tune-margin" min="0" max="16" step="4" value="0">
+   <p class="sub">Game capture only. Keeps more older audio before trimming; too much may increase lag.</p>
+  </div>
+  <p class="sub" id="tune-live" role="status">Reading current values…</p>
+  <p class="sub" id="tune-health">Recent diagnostics appear once the stream starts.</p>
+  <button id="tune-reset">Reset tuning to baseline</button>
+ </section>
+
+ <section class="card">
+  <div class="row"><h2>Headphones &amp; speakers</h2>
+   <button class="inline" data-act="scan" id="scan">Scan</button></div>
+  <p>Put the device in pairing mode, scan, then connect it. Scanning first disconnects the current device; it reconnects a minute after the scan unless you connect another.</p>
+  <label for="devices">Choose a device</label>
+  <select id="devices" aria-label="Audio device"><option value="">No devices found yet</option></select>
+  <button class="primary" id="connect-sel">Connect this device</button>
+  <div id="pin-box" class="hidden">
+   <label for="pin">Pairing PIN</label>
+   <input id="pin" maxlength="16" inputmode="numeric" value="0000">
+   <button id="pin-btn">Submit PIN</button>
+  </div>
+ </section>
+
+ <details class="card fold" id="settings">
+  <summary>Settings</summary>
+  <div class="row" style="margin-top:16px"><div><h2>TV sound</h2><p class="sub" id="tv">Reading…</p></div>
+   <button class="inline" id="tv-btn" aria-pressed="false">Toggle</button></div>
+  <div class="row" style="margin-top:16px"><div><h2>High-compatibility stereo</h2><p class="sub" id="joint">Reading…</p></div>
+   <button class="inline" id="joint-btn" aria-pressed="false">Toggle</button></div>
+  <p class="sub">On by default; turn off only if a device stays silent. Saved per device.</p>
+  <h2 style="margin-top:20px">Latency</h2>
+  <p class="sub" id="latency">Reading…</p>
+  <div class="seg" role="group" aria-label="Latency mode">
+   <button id="lat0" data-lat="0">Lowest</button>
+   <button id="lat1" data-lat="1">Balanced</button>
+   <button id="lat2" data-lat="2">Most stable</button>
+  </div>
+  <p class="sub">Lowest is snappiest; Most stable rides out Wi-Fi and game loads. Balanced by default.</p>
+ </details>
+
+ <section class="card">
+  <details id="diag">
+   <summary>Diagnostics</summary>
+   <dl>
+    <dt>Stream</dt><dd id="d-stream">—</dd>
+    <dt>Stereo mode</dt><dd id="d-sendtype">—</dd>
+    <dt>Packets</dt><dd id="d-packets">—</dd>
+    <dt>Reconnects</dt><dd id="d-relinks">—</dd>
+    <dt>Resyncs</dt><dd id="d-resyncs">—</dd>
+    <dt>Drops / underruns</dt><dd id="d-drops">—</dd>
+    <dt>Late packets (2 min)</dt><dd id="d-late">—</dd>
+   </dl>
+   <p class="sub hidden" id="d-kernel" style="margin-top:12px;overflow-wrap:anywhere"></p>
+  </details>
+ </section>
+
+ <button class="ghost" id="quit" style="color:var(--bad)">Shut down Bluetooth Audio</button>
+</div>
+
+<footer>
+ Runs on your PS4 — you can close this page while playing.<br>
+ After restarting the PS4, run your jailbreak; Bluetooth Audio starts through GoldHEN AutoRun.<br>
+ Bluetooth Audio 3.0.0 · FW14 V11 volume boost + V10 recovery
+</footer>
+</main>
+
+<script>
+"use strict";
+// link: 0 idle,1 connecting,2 playing,3 lost,4 failed,5 searching.
+var LINK=["Not connected","Connecting","Playing","Reconnecting","Can't connect","Searching"];
+var LCLS=["","warn","live","bad","bad","warn"];
+var LAT=["Lowest · least delay","Balanced","Most stable · fewest dropouts"];
+var latest=null,busy=false,exited=false,deviceKey="",quitArmed=0;
+var errSticky=false,lastTiming=0,prevBad=-1,choppyUntil=0,statusSeq=0,timingSeq=0,pollTimer=0,prevLat=-1;
+var token="";try{token=localStorage.getItem("bta_token")||"";}catch(e){}
+function $(id){return document.getElementById(id);}
+function note(t){$("notice").textContent=t||"";}
+
+function request(method,path,done){
+ var x=new XMLHttpRequest();
+ x.open(method,path,true);x.timeout=3000;
+ if(method==="POST")x.setRequestHeader("X-BTA-Control","1");
+ if(token)x.setRequestHeader("X-BTA-Token",token);
+ x.onreadystatechange=function(){
+  if(x.readyState!==4)return;
+  var d=null;try{d=JSON.parse(x.responseText);}catch(e){}
+  if(x.status===200)done(d?null:"Invalid response",d,200);
+  else done("Cannot reach Bluetooth Audio",d,x.status);
+ };
+ x.ontimeout=function(){done("PS4 is not responding",null,0);};
+ x.send(null);
+}
+
+function showPairing(s){
+ $("pairing").classList.remove("hidden");$("controls").classList.add("hidden");
+ var on=!!(s&&s.lan);
+ $("pair-hint").textContent=on?"Enter the six-digit code shown on your TV.":
+  "Phone control is off. Turn it on at the console to get a code on the TV.";
+ $("pair-code").disabled=!on;$("pair-btn").disabled=!on;
+}
+function hidePairing(){
+ if(!$("pairing").classList.contains("hidden")){
+  $("pairing").classList.add("hidden");$("controls").classList.remove("hidden");
+ }
+}
+function pair(){
+ var code=$("pair-code").value;
+ if(!/^[0-9]{6}$/.test(code)){note("Enter the six digits shown on your TV.");return;}
+ request("POST","/api/pair/"+code,function(err,d,status){
+  if(status===200&&d&&d.token){
+   token=d.token;try{localStorage.setItem("bta_token",token);}catch(e){}
+   note("");$("pair-code").value="";hidePairing();refresh();
+  }else note(status===403?"Wrong code, or phone control is off.":"Pairing failed.");
+ });
+}
+
+function linkOf(s){return typeof s.link==="number"?s.link:(s.streaming?2:(s.wanted?1:0));}
+function stateText(s,l){
+ var t=LINK[l]||"Unknown";
+ if((l===3||l===4)&&s.retry_ms>0)t+=" · retry in "+Math.ceil(s.retry_ms/1000)+"s";
+ if((l===1||l===3||l===4)&&s.attempts>1)t+=" · try "+s.attempts;
+ return t;
+}
+// One most-relevant hint, each with a single action. null means all clear.
+function hintFor(s,l,choppy){
+ if(l===4&&typeof s.kernel_caps==="number"&&!(s.kernel_caps&1))return{t:"Couldn't connect. The Bluetooth patch isn't active on this firmware, which may be why. If you report this, include the kernel line under Diagnostics.",a:"Retry",act:"connect"};
+ if(l===4)return{t:"Couldn't connect. If the device is paired to your phone, turn Bluetooth off there first, then retry.",a:"Retry",act:"connect"};
+ if(choppy)return s.latency_mode<2?
+  {t:"Audio is breaking up — usually Wi-Fi interference or a busy game. Switch to Most stable, or use wired Ethernet or 5 GHz Wi-Fi.",a:"Use Most stable",act:"latency/2"}:
+  {t:"Audio is breaking up even on Most stable. Try wired Ethernet or move the PS4 closer to the router.",a:"",act:""};
+ if(l===2&&s.quiet_ms>3000)return{t:"Connected, but no sound is arriving from the PS4 yet. Play a test tone to check the link.",a:"Test sound",act:"test"};
+ if(l===5&&(!s.devices||!s.devices.length))return{t:"Searching but nothing found yet. Make sure the device is in pairing mode, then scan again.",a:"Scan again",act:"scan"};
+ if(l===0&&s.devices&&!s.devices.length)return{t:"No device found. Put your headphones in pairing mode and scan.",a:"Scan",act:"scan"};
+ if(l===3)return{t:"Connection dropped; TV sound is back on and the service is reconnecting on its own.",a:"",act:""};
+ return null;
+}
+
+// Chain the next poll only after this one finishes, so slow round-trips
+// (congested Wi-Fi) never pile up or starve the UI.
+function scheduleNext(){clearTimeout(pollTimer);if(!exited)pollTimer=setTimeout(refresh,1200);}
+function refresh(){
+ if(exited)return;
+ if(busy){scheduleNext();return;}
+ // Ignore a stale poll once a newer one has started.
+ var my=++statusSeq;
+ request("GET","/api/status",function(err,s,status){
+  if(my!==statusSeq||exited)return;
+  scheduleNext();
+  if(status===401){showPairing(s);return;}
+  hidePairing();
+  if(err){
+   $("state").textContent="Offline";$("state").className="pill bad";
+   var po=$("primary");po.dataset.act="connect";po.textContent="Connect";po.disabled=false;
+   note("Start Bluetooth Audio from GoldHEN, then reload this page.");return;
+  }
+  if(!errSticky)note("");
+  latest=s;var l=linkOf(s);
+  $("device").textContent=s.name||"Headphones";
+  $("state").textContent=stateText(s,l);$("state").className="pill "+LCLS[l];
+  var lv=typeof s.meter==="number"?s.meter:Math.min(100,s.level*100/32767);
+  $("level").style.width=lv+"%";
+  $("signal").textContent=
+   (l===2&&s.test)?"Playing a test tone…":
+   l===2?(s.quiet_ms>3000?"Connected, but no sound from the PS4 yet":(lv>0?"Game audio is reaching the device":"Connected · waiting for game sound")):
+   (s.message||(l===0?"Ready when you are":""));
+  // Server state is authoritative; don't move a slider being dragged.
+  [["poll","tune_poll_us"," µs"],["cushion","tune_cushion_ms"," ms"],["margin","tune_margin_ms"," ms"]].forEach(function(k){
+   var el=$("tune-"+k[0]);
+   if(typeof s[k[1]]==="number"&&document.activeElement!==el)el.value=s[k[1]];
+   if(document.activeElement!==el)$("tune-"+k[0]+"-out").textContent=el.value+k[2];
+  });
+  $("tune-live").textContent="Applied: "+(s.tune_poll_us||500)+" µs wake · "+(s.tune_cushion_ms||16)+" ms buffer · "+(s.tune_margin_ms||0)+" ms drop tolerance";
+  var cooling=s.v10_reset_wait_ms||0;
+  $("recover-audio").disabled=!s.streaming||cooling>0;
+  $("recover-link").disabled=!s.streaming||cooling>0;
+  $("recover-status").textContent=cooling>0?
+   "Recovery cooldown: "+Math.ceil(cooling/1000)+" seconds. Reconnect status is not proof of playback.":
+   (s.v10_reset_pending?"Restart in progress. Reconnect, then listen to Test Sound.":
+    (s.streaming?"Ready. Try audio-only first. Only use full link reset if needed.":"Connect a headset before using recovery."));
+  $("tune-health").textContent=s.streaming?
+   "Previous ~5s: "+(s.tune_trim_5s_ms||0)+" ms trimmed · "+(s.tune_late8_5s||0)+" late deadlines (>8 ms) · worst late "+Math.round((s.tune_maxlate_5s_us||0)/1000)+" ms":
+   "Connect a headset to see timing data.";
+  if(document.activeElement!==$("volume")){$("volume").value=s.volume;$("vol-out").textContent=s.volume+"%"+(s.volume>100?" · BOOST":"");}
+  var active=s.wanted||l===1||l===2||l===3||l===5;
+  var p=$("primary");p.disabled=false;
+  if(active){p.dataset.act="stop";p.textContent=(l===2||l===3)?"Disconnect":"Stop";}
+  else{p.dataset.act="connect";p.textContent="Connect";}
+  $("test-btn").classList.toggle("hidden",l!==2);
+  $("scan").textContent=s.scanning?"Scanning…":"Scan";
+  $("pin-box").classList.toggle("hidden",!s.pin_pending);
+  var key=JSON.stringify(s.devices)+s.selected;
+  if(key!==deviceKey){
+   deviceKey=key;var sel=$("devices");sel.innerHTML="";
+   (s.devices||[]).forEach(function(d){
+    var o=document.createElement("option");o.value=d.address;
+    o.textContent=(d.name||"Unnamed device")+" · "+mac(d.address);
+    if(d.address===s.selected)o.selected=true;sel.appendChild(o);
+   });
+   if(!s.devices||!s.devices.length){
+    var o=document.createElement("option");o.value="";
+    o.textContent="No devices found — scan in pairing mode";sel.appendChild(o);
+   }
+  }
+  $("tv").textContent=s.streaming?(s.hdmi_muted?"Muted · device only":"On · TV and device"):
+   (s.tv_enabled?"On · also plays on the device":"On · mutes when the device connects");
+  setToggle("tv-btn",s.tv_enabled,s.tv_enabled?"Mute with device":"Keep TV on");
+  $("joint").textContent=s.joint?"On for this device":"Off for this device";
+  setToggle("joint-btn",s.joint,s.joint?"Turn off":"Turn on");
+  var lm=typeof s.latency_mode==="number"?s.latency_mode:1;
+  $("latency").textContent=LAT[lm]||LAT[1];
+  for(var li=0;li<3;li++)$("lat"+li).className=(li===lm)?"primary":"";
+  // Changing latency is the user acting on a breakup: clear the hint and re-judge.
+  if(lm!==prevLat){choppyUntil=0;prevLat=lm;}
+  // Cumulative counters: keep the hint up a few seconds after each rise.
+  var bad=(s.drops||0)+(s.underruns||0);
+  if(l!==2){choppyUntil=0;prevBad=-1;}  // forget breakup across a reconnect
+  else{if(prevBad>=0&&bad>prevBad)choppyUntil=Date.now()+8000;prevBad=bad;}
+  var choppy=l===2&&Date.now()<choppyUntil;
+  var h=hintFor(s,l,choppy);
+  $("fix-text").textContent=h?h.t:(l===2?"Audio is playing normally.":"No problems detected.");
+  var fb=$("fix-btn");
+  if(h&&h.a){fb.textContent=h.a;fb.dataset.act=h.act;fb.classList.remove("hidden");}
+  else fb.classList.add("hidden");
+  $("d-stream").textContent=s.streaming?"active":"idle";
+  $("d-sendtype").textContent=s.joint?"joint stereo":"dual channel";
+  $("d-packets").textContent=fmt(s.packets);
+  $("d-relinks").textContent=fmt(s.relinks);
+  $("d-resyncs").textContent=fmt(s.resyncs);
+  $("d-drops").textContent=fmt(s.drops||0)+" / "+fmt(s.underruns||0);
+  var k=$("d-kernel");k.textContent=s.kernel||"";k.classList.toggle("hidden",!s.kernel);
+  if($("diag").open&&Date.now()-lastTiming>4500)loadTiming();
+ });
+}
+function fmt(n){return typeof n==="number"?n.toLocaleString("en-US"):"—";}
+// Some firmware gives no device names, only addresses: show those as AA:BB:CC:DD:EE:FF.
+function mac(a){return /^[0-9a-f]{12}$/i.test(a)?a.match(/../g).join(":").toUpperCase():a;}
+function setToggle(id,on,label){var b=$(id);b.textContent=label;b.setAttribute("aria-pressed",on?"true":"false");}
+
+function loadTiming(){
+ lastTiming=Date.now();var my=++timingSeq;
+ request("GET","/api/timing",function(err,d){
+  if(my!==timingSeq)return;
+  if(err||!d||!d.secs){$("d-late").textContent="—";return;}
+  var late=0;d.secs.forEach(function(r){late+=(r[5]||0);});// r[5]=late8
+  $("d-late").textContent=fmt(late);
+ });
+}
+
+function action(path){
+ if(busy||exited)return;busy=true;errSticky=false;note("");
+ request("POST","/api/"+path,function(err,s,status){
+  busy=false;
+  if(status===401){refresh();return;}
+  if(err){note(err);errSticky=true;return;}
+  if(path==="quit"){exited=true;$("state").textContent="Offline";$("state").className="pill";
+   note("Bluetooth Audio stopped. TV sound is restored. Launch it again to use it.");return;}
+  refresh();
+ });
+}
+
+// One delegated handler covers every button carrying data-act or data-lat.
+document.addEventListener("click",function(e){
+ var b=e.target.closest("button[data-act]");
+ if(b&&b.dataset.act){action(b.dataset.act);return;}
+ var lat=e.target.closest("button[data-lat]");
+ if(lat)action("latency/"+lat.dataset.lat);
+});
+$("pair-btn").addEventListener("click",pair);
+$("pair-code").addEventListener("keydown",function(e){if(e.key==="Enter")pair();});
+$("connect-sel").addEventListener("click",function(){var v=$("devices").value;if(v)action("select/"+v);});
+$("pin-btn").addEventListener("click",function(){var p=$("pin").value;if(/^[0-9]{1,16}$/.test(p))action("pin/"+p);});
+$("tv-btn").addEventListener("click",function(){if(latest)action(latest.tv_enabled?"tv-off":"tv-on");});
+$("joint-btn").addEventListener("click",function(){if(latest)action(latest.joint?"joint-off":"joint-on");});
+$("volume").addEventListener("input",function(){$("vol-out").textContent=this.value+"%"+(+this.value>100?" · BOOST":"");});
+$("volume").addEventListener("change",function(){action("volume/"+this.value);});
+[["poll"," µs"],["cushion"," ms"],["margin"," ms"]].forEach(function(k){
+ var input=$("tune-"+k[0]);
+ input.addEventListener("input",function(){$("tune-"+k[0]+"-out").textContent=this.value+k[1];});
+ input.addEventListener("change",function(){action("tune/"+k[0]+"/"+this.value);});
+});
+$("tune-reset").addEventListener("click",function(){action("tune/reset");});
+$("recover-audio").addEventListener("click",function(){
+ if(window.confirm("Retry the audio stream without disconnecting Bluetooth?")) action("recover/audio");
+});
+$("recover-link").addEventListener("click",function(){
+ if(window.confirm("Disconnect and rebuild the selected headset link? This may briefly interrupt Bluetooth audio. Do not use during gameplay.")) action("recover/link");
+});
+$("diag").addEventListener("toggle",function(){if(this.open)loadTiming();});
+// Shut down needs a confirming second tap within 3 seconds.
+$("quit").addEventListener("click",function(){
+ if(quitArmed){clearTimeout(quitArmed);quitArmed=0;this.textContent="Shut down Bluetooth Audio";action("quit");return;}
+ this.textContent="Tap again to shut down";var self=this;
+ quitArmed=setTimeout(function(){quitArmed=0;self.textContent="Shut down Bluetooth Audio";},3000);
+});
+
+refresh();
+</script>
+</body>
+</html>
